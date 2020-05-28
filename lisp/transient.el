@@ -1577,12 +1577,12 @@ of the corresponding object.")
     (dolist (obj transient--suffixes)
       (let ((key (oref obj key)))
         (when (vectorp key)
-          (setq key (key-description key))
-          (oset obj key key))
+          (setf key (key-description key)
+                (oref obj key) key))
         (when transient-substitute-key-function
-          (setq key (save-match-data
-                      (funcall transient-substitute-key-function obj)))
-          (oset obj key key))
+          (setf key (save-match-data
+                      (funcall transient-substitute-key-function obj))
+                (oref obj key) key))
         (let ((kbd (kbd key))
               (cmd (transient--suffix-command obj)))
           (when-let ((conflict (and transient-detect-key-conflicts
@@ -1758,7 +1758,7 @@ value.  Otherwise return CHILDREN as is."
           (when-let ((suffixes
                       (cl-mapcan (lambda (c) (transient--init-child levels c))
                                  (transient-setup-children obj children))))
-            (oset obj suffixes suffixes)
+            (setf (oref obj suffixes) suffixes)
             (list obj)))))))
 
 (defun transient--init-suffix (levels spec)
@@ -1795,10 +1795,10 @@ value.  Otherwise return CHILDREN as is."
       (cl-call-next-method obj)
     (unless (slot-boundp obj 'shortarg)
       (when-let ((shortarg (transient--derive-shortarg (oref obj argument))))
-        (oset obj shortarg shortarg)))
+        (setf (oref obj shortarg) shortarg)))
     (unless (slot-boundp obj 'key)
       (if (slot-boundp obj 'shortarg)
-          (oset obj key (oref obj shortarg))
+          (setf (oref obj key) (oref obj shortarg))
         (error "No key for %s" (oref obj command))))))
 
 (defun transient--use-level-p (level &optional edit)
@@ -2307,9 +2307,9 @@ transient is active."
            (alist (alist-get prefix transient-levels))
            (sym (transient--suffix-symbol command)))
       (if (eq command prefix)
-          (progn (oset transient--prefix level level)
-                 (setq sym t))
-        (oset (transient-suffix-object command) level level))
+          (setf (oref transient--prefix level) level
+                sym t)
+        (setf (oref (transient-suffix-object command) level) level))
       (setf (alist-get sym alist) level)
       (setf (alist-get prefix transient-levels) alist))
     (transient-save-levels))
@@ -2334,8 +2334,8 @@ transient is active."
          (hst (oref obj history)))
     (if (< pos 0)
         (user-error "End of history")
-      (oset obj history-pos pos)
-      (oset obj value (nth pos hst))
+      (setf (oref obj history-pos) pos
+            (oref obj value) (nth pos hst))
       (mapc #'transient-init-value transient--suffixes))))
 
 (defun transient-history-prev ()
@@ -2347,8 +2347,8 @@ transient is active."
          (len (length hst)))
     (if (> pos (1- len))
         (user-error "End of history")
-      (oset obj history-pos pos)
-      (oset obj value (nth pos hst))
+      (setf (oref obj history-pos) pos
+            (oref obj value) (nth pos hst))
       (mapc #'transient-init-value transient--suffixes))))
 
 (defun transient-scroll-up (&optional arg)
@@ -2433,7 +2433,7 @@ Otherwise call the primary method according to objects class."
 (cl-defmethod transient-init-value ((obj transient-prefix))
   (if (slot-boundp obj 'value)
       (oref obj value)
-    (oset obj value
+    (setf (oref obj value)
           (if-let ((saved (assq (oref obj command) transient-values)))
               (cdr saved)
             (if-let ((default (and (slot-boundp obj 'default-value)
@@ -2444,16 +2444,16 @@ Otherwise call the primary method according to objects class."
               nil)))))
 
 (cl-defmethod transient-init-value ((obj transient-switch))
-  (oset obj value
+  (setf (oref obj value)
         (car (member (oref obj argument)
                      (oref transient--prefix value)))))
 
 (cl-defmethod transient-init-value ((obj transient-option))
-  (oset obj value
+  (setf (oref obj value)
         (transient--value-match (format "\\`%s\\(.*\\)" (oref obj argument)))))
 
 (cl-defmethod transient-init-value ((obj transient-switches))
-  (oset obj value
+  (setf (oref obj value)
         (transient--value-match (oref obj argument-regexp))))
 
 (defun transient--value-match (re)
@@ -2464,7 +2464,7 @@ Otherwise call the primary method according to objects class."
     (match-string 1 match)))
 
 (cl-defmethod transient-init-value ((obj transient-files))
-  (oset obj value
+  (setf (oref obj value)
         (cdr (assoc "--" (oref transient--prefix value)))))
 
 ;;;; Read
@@ -2516,7 +2516,7 @@ it\", in which case it is pointless to preserve history.)"
              (not multi-value)
              (not always-read)
              transient--prefix)
-        (oset obj value nil)
+        (setf (oref obj value) nil)
       (let* ((overriding-terminal-local-map nil)
              (reader (oref obj reader))
              (prompt (transient-prompt obj))
@@ -2672,7 +2672,7 @@ prompt."
 
 (cl-defmethod transient-infix-set ((obj transient-infix) value)
   "Set the value of infix object OBJ to value."
-  (oset obj value value))
+  (setf (oref obj value) value))
 
 (cl-defmethod transient-infix-set :around ((obj transient-argument) value)
   "Unset incompatible infix arguments."
@@ -2694,15 +2694,15 @@ prompt."
       (cl-call-next-method obj value))))
 
 (cl-defmethod transient-set-value ((obj transient-prefix))
-  (oset (oref obj prototype) value (transient-get-value))
+  (setf (oref (oref obj prototype) value) (transient-get-value))
   (transient--history-push obj))
 
 ;;;; Save
 
 (cl-defmethod transient-save-value ((obj transient-prefix))
   (let ((value (transient-get-value)))
-    (oset (oref obj prototype) value value)
-    (setf (alist-get (oref obj command) transient-values) value)
+    (setf (oref (oref obj prototype) value) value
+          (alist-get (oref obj command) transient-values) value)
     (transient-save-values))
   (transient--history-push obj))
 
@@ -2829,7 +2829,7 @@ have a history of their own.")
 (cl-defmethod transient--history-init ((obj transient-prefix))
   "Initialize OBJ's `history' slot from the variable `transient-history'."
   (let ((val (oref obj value)))
-    (oset obj history
+    (setf (oref obj history)
           (cons val (delete val (alist-get (transient--history-key obj)
                                            transient-history))))))
 
