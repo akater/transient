@@ -1772,7 +1772,7 @@ The default level can only be set for commands that were defined
 using `transient-define-suffix', `transient-define-infix' or
 `transient-define-argument'."
   (if-let ((proto (transient--suffix-prototype command)))
-      (oset proto level level)
+      (setf (oref proto level) level)
     (user-error "Cannot set level for `%s'; no prototype object exists"
                 command)))
 
@@ -2270,11 +2270,11 @@ of the corresponding object."
       (let ((key (oref obj key)))
         (when (vectorp key)
           (setq key (key-description key))
-          (oset obj key key))
+          (setf (oref obj key) key))
         (when transient-substitute-key-function
           (setq key (save-match-data
                       (funcall transient-substitute-key-function obj)))
-          (oset obj key key))
+          (setf (oref obj key) key))
         (let* ((kbd (kbd key))
                (cmd (oref obj command))
                (alt (transient--lookup-key map kbd)))
@@ -2460,7 +2460,7 @@ value.  Otherwise return CHILDREN as is.")
         ;; invoked suffix indicates that it has updated that.
         (setq transient--refreshp (oref transient--prefix refresh-suffixes))
       ;; Otherwise update the prefix value from suffix values.
-      (oset transient--prefix value (transient--get-extended-value))))
+      (setf (oref transient--prefix value) (transient--get-extended-value))))
   (transient--init-objects name layout params)
   (transient--init-keymaps))
 
@@ -2531,11 +2531,11 @@ value.  Otherwise return CHILDREN as is.")
                (_(transient--use-suffix-p obj))
                (_(prog1 t
                    (when (transient--inapt-suffix-p obj)
-                     (oset obj inapt t))))
+                     (setf (oref obj inapt) t))))
                (suffixes (mapcan (lambda (c) (transient--init-child levels c obj))
                                  (transient-setup-children obj children))))
       (progn
-        (oset obj suffixes suffixes)
+        (setf (oref obj suffixes) suffixes)
         (list obj)))))
 
 (defun transient--init-suffix (levels spec parent)
@@ -2564,9 +2564,9 @@ value.  Otherwise return CHILDREN as is.")
          (inapt  (and active (transient--inapt-suffix-p obj)))
          (active (and active (not inapt))))
     (cond (inapt
-           (oset obj inapt t))
+           (setf (oref obj inapt) t))
           ((not active)
-           (oset obj inactive t)))
+           (setf (oref obj inactive) t)))
     (cond ((not cmd))
           ((commandp cmd))
           ((or (cl-typep obj 'transient-switch)
@@ -2595,10 +2595,10 @@ value.  Otherwise return CHILDREN as is.")
                 (argument (oref obj argument))
                 (_(stringp argument))
                 (shortarg (transient--derive-shortarg argument)))
-      (oset obj shortarg shortarg))
+      (setf (oref obj shortarg) shortarg))
     (unless (slot-boundp obj 'key)
       (if (slot-boundp obj 'shortarg)
-          (oset obj key (oref obj shortarg))
+          (setf (oref obj key) (oref obj shortarg))
         (error "No key for %s" (oref obj command))))))
 
 (defun transient--use-level-p (level &optional edit)
@@ -2877,7 +2877,7 @@ value.  Otherwise return CHILDREN as is.")
                          (funcall unwind command))
                        (when (symbolp command)
                          (remove-function (symbol-function command) advice))
-                       (oset prefix unwind-suffix nil))))))
+                       (setf (oref prefix unwind-suffix) nil))))))
               (unwind-protect
                   (let ((debugger #'transient--exit-and-debug))
                     (if-let* ((obj suffix)
@@ -2893,7 +2893,7 @@ value.  Otherwise return CHILDREN as is.")
                   (funcall unwind command))
                 (when (symbolp command)
                   (remove-function (symbol-function command) advice))
-                (oset prefix unwind-suffix nil)))))
+                (setf (oref prefix unwind-suffix) nil)))))
         (add-function :around (if (symbolp this-command)
                                   (symbol-function this-command)
                                 this-command)
@@ -2925,7 +2925,7 @@ value.  Otherwise return CHILDREN as is.")
                       (funcall unwind command))
                     (when (symbolp command)
                       (remove-function (symbol-function command) advice))
-                    (oset prefix unwind-suffix nil))))))
+                    (setf (oref prefix unwind-suffix) nil))))))
            (advice-body
             (lambda (fn &rest args)
               (unwind-protect
@@ -2943,7 +2943,7 @@ value.  Otherwise return CHILDREN as is.")
                   (funcall unwind command))
                 (when (symbolp command)
                   (remove-function (symbol-function command) advice))
-                (oset prefix unwind-suffix nil)))))
+                (setf (oref prefix unwind-suffix) nil)))))
       (setq advice `(lambda (fn &rest args)
                       (interactive ,advice-interactive)
                       (apply ',advice-body fn args)))
@@ -2959,8 +2959,8 @@ value.  Otherwise return CHILDREN as is.")
        (progn
          (transient--debug 'premature-post-command)
          (transient--suspend-override)
-         (oset (or transient--prefix transient-current-prefix)
-               unwind-suffix
+         (setf (oref (or transient--prefix transient-current-prefix)
+                     unwind-suffix)
                (if transient--exitp
                    #'transient--post-exit
                  #'transient--resume-override))
@@ -3506,10 +3506,10 @@ For example:
            (alist (alist-get prefix transient-levels))
            (akey command))
       (cond ((eq command prefix)
-             (oset transient--prefix level level)
+             (setf (oref transient--prefix level) level)
              (setq akey t))
             (t
-             (oset (transient-suffix-object command) level level)
+             (setf (oref (transient-suffix-object command) level) level)
              (when (cdr (cl-remove-if-not (lambda (obj)
                                             (eq (oref obj command) command))
                                           transient--suffixes))
@@ -3568,8 +3568,8 @@ For example:
          (hst (oref obj history)))
     (if (< pos 0)
         (user-error "End of history")
-      (oset obj history-pos pos)
-      (oset obj value (nth pos hst))
+      (setf (oref obj history-pos) pos)
+      (setf (oref obj value) (nth pos hst))
       (mapc #'transient-init-value transient--suffixes))))
 
 (defun transient-history-prev ()
@@ -3581,8 +3581,8 @@ For example:
          (len (length hst)))
     (if (> pos (1- len))
         (user-error "End of history")
-      (oset obj history-pos pos)
-      (oset obj value (nth pos hst))
+      (setf (oref obj history-pos) pos)
+      (setf (oref obj value) (nth pos hst))
       (mapc #'transient-init-value transient--suffixes))))
 
 (transient-define-suffix transient-preset ()
@@ -3688,7 +3688,7 @@ Use `transient-default-value' to determine the default value."
       ;; Already set because the live object is cloned from
       ;; the prototype, were the set (if any) value is stored.
       (oref obj value)
-    (oset obj value
+    (setf (oref obj value)
           (if-let ((saved (assq (oref obj command) transient-values)))
               (cdr saved)
             (transient-default-value obj)))))
@@ -3699,11 +3699,11 @@ Call `transient-default-value' but because that is a noop for
 `transient-suffix', this function is effectively also a noop."
   (let ((value (transient-default-value obj)))
     (unless (eq value eieio--unbound)
-      (oset obj value value))))
+      (setf (oref obj value) value))))
 
 (cl-defmethod transient-init-value ((obj transient-argument))
   "Extract OBJ's value from the value of the prefix object."
-  (oset obj value
+  (setf (oref obj value)
         (let ((value (oref transient--prefix value))
               (argument (and (slot-boundp obj 'argument)
                              (oref obj argument)))
@@ -3724,7 +3724,7 @@ Call `transient-default-value' but because that is a noop for
 
 (cl-defmethod transient-init-value ((obj transient-switch))
   "Extract OBJ's value from the value of the prefix object."
-  (oset obj value
+  (setf (oref obj value)
         (car (member (oref obj argument)
                      (oref transient--prefix value)))))
 
@@ -3800,7 +3800,7 @@ it\", in which case it is pointless to preserve history.)"
              (not multi-value)
              (not always-read)
              transient--prefix)
-        (oset obj value nil)
+        (setf (oref obj value) nil)
       (let* ((enable-recursive-minibuffers t)
              (reader (oref obj reader))
              (choices (if (functionp choices) (funcall choices) choices))
@@ -3955,7 +3955,7 @@ prompt."
 
 (cl-defmethod transient-infix-set ((obj transient-infix) value)
   "Set the value of infix object OBJ to VALUE."
-  (oset obj value value))
+  (setf (oref obj value) value))
 
 (cl-defmethod transient-infix-set :after ((obj transient-argument) value)
   "Unset incompatible infix arguments."
@@ -3987,7 +3987,7 @@ prompt."
 (defun transient-prefix-set (value)
   "Set the value of the active transient prefix to VALUE.
 Intended for use by transient suffix commands."
-  (oset transient--prefix value value)
+  (setf (oref transient--prefix value) value)
   (setq transient--refreshp 'updated-value))
 
 (cl-defgeneric transient-set-value (obj)
@@ -3997,7 +3997,7 @@ See also `transient-prefix-set'.")
 
 (cl-defmethod transient-set-value ((obj transient-prefix))
   (let ((value (transient--get-savable-value)))
-    (oset (oref obj prototype) value value)
+    (setf (oref (oref obj prototype) value) value)
     (transient--history-push obj value)))
 
 (defun transient--maybe-set-value (event)
@@ -4025,7 +4025,7 @@ See also `transient-prefix-set'.")
 
 (cl-defmethod transient-save-value ((obj transient-prefix))
   (let ((value (transient--get-savable-value)))
-    (oset (oref obj prototype) value value)
+    (setf (oref (oref obj prototype) value) value)
     (setf (alist-get (oref obj command) transient-values) value)
     (transient-save-values)
     (transient--history-push obj value)))
@@ -4037,8 +4037,8 @@ See also `transient-prefix-set'.")
 
 (cl-defmethod transient-reset-value ((obj transient-prefix))
   (let ((value (transient-default-value obj)))
-    (oset obj value value)
-    (oset (oref obj prototype) value value)
+    (setf (oref obj value) value)
+    (setf (oref (oref obj prototype) value) value)
     (setf (alist-get (oref obj command) transient-values nil 'remove) nil)
     (transient-save-values)
     (transient--history-push obj value))
@@ -4242,7 +4242,7 @@ Append \"=\ to ARG to indicate that it is an option."
                           (oref suffix-obj transient)
                         (oref transient-current-prefix transient-suffix))
                       (list t 'recurse #'transient--do-recurse))))
-    (oset obj return t)))
+    (setf (oref obj return) t)))
 
 ;;; Scope
 ;;;; Init
@@ -4344,7 +4344,7 @@ have a history of their own.")
 
 (cl-defmethod transient--history-init ((obj transient-prefix))
   "Initialize OBJ's `history' slot from the variable `transient-history'."
-  (oset obj history
+  (setf (oref obj history)
         (let ((val (transient--get-extended-value)))
           (cons val (delete val (alist-get (transient--history-key obj)
                                            transient-history))))))
@@ -4922,7 +4922,7 @@ apply the face `transient-unreachable' to the complete string."
 (defun transient--maybe-pad-keys (group &optional parent)
   (when-let ((pad (or (oref group pad-keys)
                       (and parent (oref parent pad-keys)))))
-    (oset group pad-keys
+    (setf (oref group pad-keys)
           (apply #'max
                  (if (integerp pad) pad 0)
                  (seq-keep (lambda (suffix)
@@ -5446,12 +5446,12 @@ as stand-in for elements of exhausted lists."
   "[Experimental] Class used for Lisp variables.")
 
 (cl-defmethod transient-init-value ((obj transient-lisp-variable))
-  (oset obj value (symbol-value (oref obj variable))))
+  (setf (oref obj value) (symbol-value (oref obj variable))))
 
 (cl-defmethod transient-infix-set ((obj transient-lisp-variable) value)
   (funcall (oref obj set-value)
            (oref obj variable)
-           (oset obj value value)))
+           (setf (oref obj value) value)))
 
 (cl-defmethod transient-format-description ((obj transient-lisp-variable))
   (or (cl-call-next-method obj)
